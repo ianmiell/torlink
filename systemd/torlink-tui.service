@@ -1,0 +1,27 @@
+# systemd user unit: the torlink TUI running persistently in a private tmux
+# server (socket "torlink"), so it keeps downloading and seeding with nobody
+# attached. Runs at boot because lingering is on for the user.
+#   torlink-attach                       open a window attached to it
+#   systemctl --user status torlink-tui
+# Quitting the TUI restarts it; `systemctl --user stop torlink-tui` stops it.
+# Conflicts with torlink-serve: both drive the same saved queue and seeds.
+[Unit]
+Description=torlink TUI in a private tmux server (tmux -L torlink)
+After=network-online.target
+Wants=network-online.target
+Conflicts=torlink-serve.service
+
+[Service]
+Type=forking
+WorkingDirectory=%h/git/torlink
+Environment=PATH=%h/.nvm/versions/node/v22.17.1/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-%h/.config/torlink/env
+ExecStart=/usr/bin/tmux -L torlink -f %h/.config/torlink/tmux.conf new-session -d -s torlink -n torlink "exec %h/.nvm/versions/node/v22.17.1/bin/node %h/git/torlink/dist/cli.cjs"
+# SIGTERM the TUI itself (a clean quit); the tmux server exits with it.
+# Nothing to do if the TUI already quit (the server is gone with it).
+ExecStop=/bin/sh -c 'p=$$(/usr/bin/tmux -L torlink display-message -p -t torlink "#{pane_pid}" 2>/dev/null) && kill $$p || true'
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

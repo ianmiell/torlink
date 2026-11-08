@@ -1,0 +1,22 @@
+# systemd user unit for torlink's headless HTTP add API (torlnk serve).
+# Runs at boot because lingering is on for the user.
+#   systemctl --user status torlink-serve
+#   journalctl --user -u torlink-serve -f
+# Settings (TORLINK_API_TOKEN, ...) go in ~/.config/torlink/env, mode 600.
+# Extra flags (e.g. --to <dir>, --seed-time 30d) go in TORLINK_SERVE_ARGS there.
+[Unit]
+Description=torlink serve (HTTP add API) on 127.0.0.1:9161
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=%h/git/torlink
+Environment=PATH=%h/.nvm/versions/node/v22.17.1/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-%h/.config/torlink/env
+ExecStart=%h/.nvm/versions/node/v22.17.1/bin/node %h/git/torlink/dist/cli.cjs serve $TORLINK_SERVE_ARGS
+Restart=on-failure
+RestartSec=15
+Nice=5
+
+[Install]
+WantedBy=default.target
